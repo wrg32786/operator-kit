@@ -1,0 +1,11 @@
+{
+  "_comment": "project-keywords.json — auto-context-load keyword dictionary. Each entry maps trigger keywords to project file paths relative to PROJECT_ROOT. priority_file = first file to excerpt (40 lines shown). files = all files to list when keyword matches.",
+  "_example_entry": {
+    "keywords": ["your-keyword", "alternate trigger phrase"],
+    "priority_file": "path/to/priority-doc.md",
+    "files": [
+      "path/to/priority-doc.md",
+      "path/to/related-doc.md"
+    ]
+  }
+}

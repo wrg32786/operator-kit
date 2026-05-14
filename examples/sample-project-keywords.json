@@ -1,0 +1,65 @@
+{
+  "_comment": "Sample project-keywords.json for a fictional SaaS project (Acme). Copy this structure into your own project-keywords.json and replace with your actual keywords and file paths.",
+
+  "auth": {
+    "keywords": ["auth", "authentication", "login", "jwt", "session", "oauth"],
+    "priority_file": "docs/auth-architecture.md",
+    "files": [
+      "docs/auth-architecture.md",
+      "src/lib/auth.ts",
+      "src/middleware/requireAuth.ts",
+      "docs/auth-flow-diagram.md"
+    ]
+  },
+
+  "payments": {
+    "keywords": ["payment", "stripe", "billing", "subscription", "invoice", "checkout"],
+    "priority_file": "docs/payments-overview.md",
+    "files": [
+      "docs/payments-overview.md",
+      "src/lib/stripe.ts",
+      "src/api/webhooks/stripe.ts",
+      "docs/stripe-webhook-events.md"
+    ]
+  },
+
+  "database": {
+    "keywords": ["database", "schema", "migration", "postgres", "prisma", "db"],
+    "priority_file": "docs/database-schema.md",
+    "files": [
+      "docs/database-schema.md",
+      "prisma/schema.prisma",
+      "docs/migration-runbook.md"
+    ]
+  },
+
+  "onboarding": {
+    "keywords": ["onboarding", "signup", "welcome flow", "new user", "activation"],
+    "priority_file": "docs/onboarding-spec.md",
+    "files": [
+      "docs/onboarding-spec.md",
+      "src/app/onboarding/page.tsx",
+      "src/components/OnboardingFlow.tsx"
+    ]
+  },
+
+  "api": {
+    "keywords": ["api", "endpoint", "rest", "route handler", "api design"],
+    "priority_file": "docs/api-conventions.md",
+    "files": [
+      "docs/api-conventions.md",
+      "docs/api-reference.md",
+      "src/app/api/"
+    ]
+  },
+
+  "deployment": {
+    "keywords": ["deploy", "deployment", "vercel", "production", "staging", "ci", "cd", "pipeline"],
+    "priority_file": "docs/deployment-runbook.md",
+    "files": [
+      "docs/deployment-runbook.md",
+      ".github/workflows/deploy.yml",
+      "docs/environment-vars.md"
+    ]
+  }
+}
