@@ -1,80 +1,89 @@
+<div align="center">
+
+<img src="assets/hero.gif" alt="Five operator-kit agents delegating inside a terminal: Lyra hands a spec to Iris, Newton runs a research sweep, Hypatia flags a risk" width="760">
+
 # AIgent Operator Kit
 
-These are 5 agents I use across my own projects, plus the context-loading pattern that keeps them from forgetting what you're building. All MIT licensed. Drop them into your Claude Code setup and use them as-is or adapt them.
+**Five specialists. One install. Drop them into `~/.claude/agents/`.**
 
-## What's in it
+Five Claude Code subagents that each do one job well (design, build, scout, research, critique), plus a context-loader hook that stops you re-explaining your project every session. MIT licensed. Use them as-is or adapt them.
 
-```
-operator-kit/
-├── agents/          # Drop into ~/.claude/agents/
-│   ├── iris.md      # Visual designer
-│   ├── lyra.md      # Builder
-│   ├── echo.md      # Scout / reader
-│   ├── newton.md    # Research synthesist
-│   └── hypatia.md   # Critic / devil's advocate
-├── context-loader/  # Auto-inject project context on keyword match
-│   ├── auto-context-load.sh
-│   ├── project-keywords.json
-│   └── install.md
-├── rules/
-│   └── post-compact-critical.md.template
-└── examples/
-    └── sample-project-keywords.json
+</div>
+
+## Install
+
+One line. Backs up your `settings.json`, installs the agents, and wires the context-loader hook (idempotent, never clobbers existing hooks):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wrg32786/operator-kit/main/install.sh | bash
 ```
 
-## The agents
-
-**Iris** is the visual specialist. Give her a design problem and she returns a specification: palette, proportions, hierarchy, motion, and AI image-gen prompts if needed. She does not write code — she writes specs precise enough that a builder can implement without guessing. Use her for UI design briefs, sprite specs, color systems, and animation choreography.
-
-**Lyra** is the builder. She takes a complete spec and returns a diff or built artifact. Before writing anything, she runs a pre-build checklist: invariant, failure modes, cost asymmetry, boring-path test, handoff test. Every response ends with an honesty ledger so you know exactly what changed, what was left alone, and what she noticed but didn't fix. Use her for code edits with bounded scope.
-
-**Echo** is the scout. Haiku-class, read-only, fast. She traverses files, summarizes codebases, and returns structured findings — paths, line numbers, bullet points, no prose. She never writes or executes. Use her when you need to know what exists before deciding what to do.
-
-**Newton** is the research synthesist. He pulls from multiple sources (web search, project notes, GitHub, docs), triangulates, and returns a structured briefing with inline citations. Every claim traces to a source. He leads with a working hypothesis and closes with a recommendation — you make the call. Use him for tool evaluations, competitive analysis, and any question that needs real evidence before a decision.
-
-**Hypatia** is the critic. She challenges thinking before it hardens into commitment. She finds the strongest counterargument first, names the hidden assumptions, and surfaces the alternatives you didn't consider. Read-only — she critiques, never builds. Use her before any significant decision, architecture choice, or plan you're about to commit to.
-
-## Install the agents
-
-Copy the files from `agents/` into your Claude Code agents directory:
+Prefer to do it by hand? Just copy the agents:
 
 ```bash
 cp agents/*.md ~/.claude/agents/
 ```
 
-That's it. Claude Code auto-discovers agents in that directory. You can invoke them directly:
+Claude Code auto-discovers agents in that directory. Restart it, then invoke one:
 
 ```
-use the echo agent to find all API route handlers in src/
+use the echo agent to find every place we call the Stripe API
 ```
 
-Or set one as the default for a project by adding it to `.claude/CLAUDE.md`.
+## The agents
 
-## Install the context loader
+One agent per job beats one generalist at average quality. Compose them: Echo finds the files, Newton researches the approach, Hypatia challenges it, Lyra builds it.
 
-The context loader is a UserPromptSubmit hook. When you mention a keyword in your prompt, it injects the relevant project files into context before the agent responds. You stop re-explaining what you're working on every session.
+| Agent | Role | Example task |
+|---|---|---|
+| **Iris** | Visual designer (specs, not code) | "Iris, design the dashboard empty-state: palette, hierarchy, motion." |
+| **Lyra** | Builder (bounded diffs) | "Lyra, add optimistic updates to the comment box. Return a diff." |
+| **Echo** | Scout (read-only, fast) | "Echo, list every route handler under `src/api/`." |
+| **Newton** | Research synthesist (cited) | "Newton, Drizzle vs Prisma for our schema, with sources." |
+| **Hypatia** | Critic (devil's advocate) | "Hypatia, poke holes in this migration plan before I run it." |
 
-See `context-loader/install.md` for the full install walkthrough.
+Two patterns worth calling out. **Lyra and Newton end every response with an honesty ledger**: what changed, what was left alone, what was noticed but not fixed, what is still uncertain. You stay informed even when you are moving fast. **Iris writes specs, not code**: a brief precise enough that a builder implements without guessing.
 
-The short version:
+## The context loader
 
-1. Copy `auto-context-load.sh` and `project-keywords.json` somewhere in your project
-2. `chmod +x auto-context-load.sh`
-3. Add the hook to `.claude/settings.json`
-4. Populate `project-keywords.json` with your project's keywords and file paths
+A `UserPromptSubmit` hook. Mention a keyword you have configured ("auth flow", "payments") and the relevant project files are injected into context before the agent responds. Structural enforcement, not a memory note: it fires every time, not just when you remember to.
 
-See `examples/sample-project-keywords.json` for a filled-out example.
+```jsonc
+// project-keywords.json
+"auth": {
+  "keywords": ["auth flow", "login", "session"],
+  "priority_file": "docs/auth.md",
+  "files": ["docs/auth.md", "src/lib/session.ts"]
+}
+```
+
+The installer drops a starter keywords file at `~/.claude/hooks/operator-kit-keywords.json`. Point its entries at your files, restart, and type a keyword to see the `[AUTO-CONTEXT]` block appear. Full walkthrough in [`context-loader/install.md`](context-loader/install.md).
 
 ## The critical-rules template
 
-`rules/post-compact-critical.md.template` is a starting point for your own post-compaction rules file. When Claude Code compresses a long session, most conversation history is lost. Files you wire into your project settings survive. Use this template to capture rules that must hold no matter how far into a session you are: database invariants, code style rules, known footguns, verification requirements.
+`rules/post-compact-critical.md.template` is a starting point for rules that must survive a long session. When Claude Code compacts, most history is lost; files wired into your project settings do not. Capture the things that cannot drift: database invariants, style rules, known footguns, verification gates.
 
-## Notes
+## What's in it
 
-The honesty ledger pattern used by Lyra and Newton is deliberate. Every response ends with a structured accounting of what changed, what didn't, what was noticed but not fixed, and what's still uncertain. This keeps you informed even when you're moving fast.
+```
+operator-kit/
+├── agents/          # iris · lyra · echo · newton · hypatia  → ~/.claude/agents/
+├── context-loader/  # auto-context-load.sh + keywords + install guide
+├── rules/           # post-compact rules template
+├── examples/        # a filled-out keywords file
+└── install.sh       # one-click installer
+```
 
-The agent separation (Iris designs, Lyra builds, Echo scouts, Newton researches, Hypatia critiques) reflects a principle: each agent does one job and does it well, rather than one generalist agent that does everything at average quality. You can compose them — have Echo find the files, Newton research the approach, Hypatia challenge it, and Lyra implement it.
+## License
+
+MIT. See [LICENSE](LICENSE). The agents are self-contained: no private skills, no hidden dependencies, nothing to phone home.
 
 ---
 
-MIT License. See LICENSE file.
+<div align="center">
+
+Built by **[The AIgent](https://theaigent.xyz)**. A weekly digest on running Claude Code at scale: **[theaigent.xyz](https://theaigent.xyz)**
+
+Want the full operator system these agents run inside? **[aigent-OS](https://theaigent.gumroad.com/l/aigent-os)** ($197).
+
+</div>
