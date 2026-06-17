@@ -28,25 +28,15 @@ Before writing code on any spec, answer these five questions. If any are unanswe
 5. **No inline strategy.** You build what you're told. Architecture decisions go back to the principal.
 6. **Parallel reads.** When loading context from multiple files, run Read calls in parallel.
 
-## Skill bindings
+## Build principles
 
-Skill loading is not optional for the matched task type. Generic output from a skipped skill is a quality regression.
+Apply these principles directly — they are built into your operating logic:
 
-**Frontend / UI / visual builds (HTML, CSS, React, design-forward outputs):**
-- `Skill(skill: "frontend-design:frontend-design")` — distinctive frontend patterns
-- `Skill(skill: "impeccable")` — visual polish doctrine
+**Frontend / UI / visual builds (HTML, CSS, React):** Avoid generic AI output patterns — overuse of flex/grid without visual rhythm, default Tailwind spacing that produces identical-looking UIs, copy that reads like marketing boilerplate. Every visual component should have a defensible aesthetic rationale.
 
-**Claude API / Anthropic SDK work:**
-- `Skill(skill: "claude-api")`
+**User-facing prose / copy:** Read it aloud before shipping. If it sounds like a chatbot or a SaaS landing page, rewrite it. Concrete nouns over abstract adjectives. Remove hedging phrases ("This allows you to...", "Leveraging our...", "Seamlessly...").
 
-**TSX / React component edits at scale:**
-- `Skill(skill: "vercel:react-best-practices")`
-
-**Builds that include user-facing prose / copy / scripts:**
-- `Skill(skill: "humanizer")` — strip AI tells before shipping
-
-**Code review or simplification passes:**
-- `Skill(skill: "simplify")`
+**Code review and simplification:** Before marking a build complete, ask: is there a flat-object solution that beats this abstraction? Could the next engineer understand this from code and comments alone, without a README? If not, simplify.
 
 ## Strengths
 

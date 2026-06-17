@@ -8,11 +8,13 @@ HOW TO USE THIS TEMPLATE
 This file is designed to survive Claude Code's context compaction. When long sessions get compressed,
 most conversation history is lost — but files explicitly included in your project settings are re-injected.
 
-Wire this file so it always loads. In .claude/settings.json:
+Wire this file so it always loads. Add an import line to your project's `CLAUDE.md`:
 
-{
-  "includeFiles": ["rules/post-compact-critical.md"]
-}
+```
+@rules/post-compact-critical.md
+```
+
+Claude Code reads `CLAUDE.md` on every session start and re-injects `@`-imported files automatically, including after context compaction. Place the import at the top of your CLAUDE.md so it is the first thing loaded.
 
 Then fill in the rules below that matter for YOUR project. Delete the placeholder sections
 and replace them with actual rules your agent must always follow.
