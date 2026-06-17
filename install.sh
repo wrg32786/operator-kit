@@ -25,7 +25,15 @@ set -euo pipefail
 # When run via `curl … | bash`, the script is piped through stdin — BASH_SOURCE[0]
 # is empty or "bash", so REPO_DIR resolves to the caller's CWD (no source files).
 # In that case we self-fetch the repo into a temp directory.
-_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-}")" 2>/dev/null && pwd || echo "$PWD")"
+# Only trust BASH_SOURCE as a clone path when it points to a REAL readable file.
+# When piped via curl|bash it is "bash"/empty, so this leaves _SCRIPT_DIR empty
+# and forces self-fetch — without this guard, running the one-liner from any dir
+# that happens to contain an agents/ folder copies the wrong files (live-QA catch).
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+  _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  _SCRIPT_DIR=""
+fi
 REPO_URL="https://github.com/wrg32786/operator-kit.git"
 _TMPDIR=""
 
@@ -34,8 +42,8 @@ _TMPDIR=""
 _cleanup() { [ -n "$_TMPDIR" ] && rm -rf "$_TMPDIR"; return 0; }
 trap _cleanup EXIT
 
-if [ -d "$_SCRIPT_DIR/agents" ]; then
-  # Running from a local clone — use files in place
+if [ -n "$_SCRIPT_DIR" ] && [ -d "$_SCRIPT_DIR/agents" ] && [ -d "$_SCRIPT_DIR/context-loader" ] && [ -f "$_SCRIPT_DIR/install.sh" ]; then
+  # Running from a genuine local clone (dir is actually operator-kit) — use in place
   SRC="$_SCRIPT_DIR"
 else
   # Piped via curl|bash (or run from a directory without the repo files).
