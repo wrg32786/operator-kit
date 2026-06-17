@@ -38,7 +38,7 @@ chmod +x auto-context-load.sh
 
 **3. Set PROJECT_ROOT**
 
-The script auto-detects its root from its own location (two levels up from the script). If your layout differs, set the env var explicitly in your shell profile:
+The script auto-detects its root from its own location (one level up from the `context-loader/` directory, which is your project root). If your layout differs, set the env var explicitly in your shell profile:
 
 ```bash
 export PROJECT_ROOT="/absolute/path/to/your-project"

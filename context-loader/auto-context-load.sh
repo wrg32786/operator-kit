@@ -15,7 +15,7 @@
 #   - Logs every fire to <project-root>/memory/.auto-context-log
 #   - Uses python3 for JSON parsing (no jq dependency)
 
-ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
+ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 DAEMON_ERR_LOG="$ROOT/memory/.daemon-errors.log"
 
 # Windows Git-Bash: /c/Users/... -> C:/Users/...
