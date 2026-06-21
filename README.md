@@ -84,6 +84,6 @@ MIT. See [LICENSE](LICENSE). The agents are self-contained: no private skills, n
 
 Built by **[The AIgent](https://theaigent.xyz)**. A weekly digest on running Claude Code at scale: **[theaigent.xyz](https://theaigent.xyz)**
 
-Want the full operator system these agents run inside? **[aigent-OS](https://theaigent.gumroad.com/l/aigent-os)** ($197).
+Want the full operator system these agents run inside? **[aigent-OS](https://tools.theaigent.xyz/os)** ($49).
 
 </div>
