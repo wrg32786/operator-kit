@@ -49,7 +49,7 @@ Two patterns worth calling out. **Lyra and Newton end every response with an hon
 A `UserPromptSubmit` hook. Mention a keyword you have configured ("auth flow", "payments") and the relevant project files are injected into context before the agent responds. Structural enforcement, not a memory note: it fires every time, not just when you remember to.
 
 ```jsonc
-// project-keywords.json
+// operator-kit-keywords.json
 "auth": {
   "keywords": ["auth flow", "login", "session"],
   "priority_file": "docs/auth.md",
@@ -57,7 +57,7 @@ A `UserPromptSubmit` hook. Mention a keyword you have configured ("auth flow", "
 }
 ```
 
-The installer drops a starter keywords file at `~/.claude/hooks/operator-kit-keywords.json`. Point its entries at your files, restart, and type a keyword to see the `[AUTO-CONTEXT]` block appear. Full walkthrough in [`context-loader/install.md`](context-loader/install.md).
+The installer drops a starter keywords file at `~/.claude/hooks/operator-kit-keywords.json`. Point its entries at files relative to the Claude Code workspace you launch from, restart, and type a keyword to see the `[AUTO-CONTEXT]` block appear. If your hook runner uses a different working directory, set `PROJECT_ROOT=/absolute/path/to/project`. Full walkthrough in [`context-loader/install.md`](context-loader/install.md).
 
 ## The critical-rules template
 
