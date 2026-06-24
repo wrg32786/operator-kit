@@ -17,38 +17,64 @@ This is structural enforcement, not a memory note. It fires every time, not just
 - `python3` available on your PATH (used for JSON parsing)
 - Git Bash or WSL if you're on Windows (the hook is a bash script)
 
-## Install steps
+## One-line install behavior
 
-**1. Copy the files into your project**
+The main installer places the hook and starter keywords file here:
 
-Place these two files somewhere in your project (the context-loader directory is a good choice, or wherever you keep dev tooling):
-
+```text
+~/.claude/hooks/auto-context-load.sh
+~/.claude/hooks/operator-kit-keywords.json
 ```
+
+After installing, edit:
+
+```bash
+~/.claude/hooks/operator-kit-keywords.json
+```
+
+Add keywords and project files relative to the Claude Code workspace you launch from. Example:
+
+```json
+"auth": {
+  "keywords": ["auth", "login", "session"],
+  "priority_file": "docs/auth.md",
+  "files": [
+    "docs/auth.md",
+    "src/lib/session.ts"
+  ]
+}
+```
+
+If your hook runner does not use your project directory as its working directory, set `PROJECT_ROOT` explicitly:
+
+```bash
+export PROJECT_ROOT="/absolute/path/to/your-project"
+```
+
+You can also point the hook at a different keywords file:
+
+```bash
+export OPERATOR_KIT_KEYWORDS="/absolute/path/to/operator-kit-keywords.json"
+```
+
+## Manual project-local install
+
+If you prefer to keep the hook inside a single project, place these two files in your repo:
+
+```text
 your-project/
   context-loader/
     auto-context-load.sh
     project-keywords.json
 ```
 
-**2. Make the script executable**
+Then make the script executable:
 
 ```bash
-chmod +x auto-context-load.sh
+chmod +x context-loader/auto-context-load.sh
 ```
 
-**3. Set PROJECT_ROOT**
-
-The script auto-detects its root from its own location (one level up from the `context-loader/` directory, which is your project root). If your layout differs, set the env var explicitly in your shell profile:
-
-```bash
-export PROJECT_ROOT="/absolute/path/to/your-project"
-```
-
-Or pass it inline in the hook command (step 4).
-
-**4. Wire it into Claude Code settings**
-
-Open (or create) `.claude/settings.json` in your project root and add the hook:
+Open or create `.claude/settings.json` in your project root and add the hook:
 
 ```json
 {
@@ -68,28 +94,20 @@ Open (or create) `.claude/settings.json` in your project root and add the hook:
 }
 ```
 
-Use an absolute path in the command — Claude Code's working directory may vary.
+Use an absolute path in the command. Claude Code's working directory can vary.
 
-**5. Populate project-keywords.json**
+## Keywords file resolution order
 
-Edit `project-keywords.json` to map your project's trigger words to relevant files. See `examples/sample-project-keywords.json` for a filled-out example.
+The hook looks for keywords in this order:
 
-Each entry follows this shape:
+1. `OPERATOR_KIT_KEYWORDS`, if set
+2. `~/.claude/hooks/operator-kit-keywords.json`, the one-line install default
+3. `operator-kit-keywords.json` next to the hook script
+4. `<PROJECT_ROOT>/context-loader/project-keywords.json`, the project-local fallback
 
-```json
-"entry_key": {
-  "keywords": ["trigger word", "alternate phrase"],
-  "priority_file": "relative/path/to/main-doc.md",
-  "files": [
-    "relative/path/to/main-doc.md",
-    "relative/path/to/related-doc.md"
-  ]
-}
-```
+Paths inside the keywords file are resolved relative to `PROJECT_ROOT`, or the current Claude Code workspace if `PROJECT_ROOT` is not set.
 
-Paths are relative to `PROJECT_ROOT`.
-
-**6. Test it**
+## Test it
 
 Open a new Claude Code session in your project. Type a prompt containing one of your keywords. You should see an `[AUTO-CONTEXT]` block appear before Claude's response.
 
@@ -103,7 +121,9 @@ The hook also logs every fire to `memory/.auto-context-log` in your project root
 
 ## Troubleshooting
 
-**Hook never fires:** Check that the path in settings.json is absolute and the script is executable.
+**Hook never fires:** Confirm `~/.claude/hooks/operator-kit-keywords.json` exists, contains a keyword from your prompt, and the script is executable.
+
+**Files show as not found:** Set `PROJECT_ROOT` to your project path, or launch Claude Code from the project root.
 
 **"python3 not found":** Install Python 3 or update the script to use `python` if that's your binary name.
 
