@@ -9,14 +9,22 @@
 #
 # Convention:
 #   - Reads prompt from stdin (Claude Code UserPromptSubmit hook convention)
-#   - PROJECT_ROOT env var or auto-detected from script location
+#   - PROJECT_ROOT env var overrides the project root
+#   - OPERATOR_KIT_KEYWORDS env var overrides the keywords file path
+#   - Global install default: ~/.claude/hooks/operator-kit-keywords.json
+#   - Project-local fallback: <project-root>/context-loader/project-keywords.json
 #   - Output: system-reminder blocks to stdout. Silent if no match.
 #   - Total output capped at ~80KB / 3000 lines across all matches
 #   - Logs every fire to <project-root>/memory/.auto-context-log
 #   - Uses python3 for JSON parsing (no jq dependency)
 
-ROOT="${PROJECT_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
-DAEMON_ERR_LOG="$ROOT/memory/.daemon-errors.log"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+# In the one-line install, this script lives in ~/.claude/hooks while the files it
+# should surface usually live in the active Claude Code workspace. Prefer the
+# caller's working directory for project-relative paths. PROJECT_ROOT remains the
+# explicit override for non-standard hook runners.
+ROOT="${PROJECT_ROOT:-$(pwd)}"
 
 # Windows Git-Bash: /c/Users/... -> C:/Users/...
 normalize_path() {
@@ -29,8 +37,26 @@ normalize_path() {
 }
 
 ROOT=$(normalize_path "$ROOT")
-KEYWORDS_FILE="$ROOT/context-loader/project-keywords.json"
+SCRIPT_DIR=$(normalize_path "$SCRIPT_DIR")
+
+# Keywords file resolution order:
+# 1. Explicit OPERATOR_KIT_KEYWORDS override
+# 2. Installed one-line default: ~/.claude/hooks/operator-kit-keywords.json
+# 3. Same-dir fallback for custom global installs
+# 4. Project-local fallback for manual installs inside a repo
+if [ -n "${OPERATOR_KIT_KEYWORDS:-}" ]; then
+  KEYWORDS_FILE="$OPERATOR_KIT_KEYWORDS"
+elif [ -f "$HOME/.claude/hooks/operator-kit-keywords.json" ]; then
+  KEYWORDS_FILE="$HOME/.claude/hooks/operator-kit-keywords.json"
+elif [ -f "$SCRIPT_DIR/operator-kit-keywords.json" ]; then
+  KEYWORDS_FILE="$SCRIPT_DIR/operator-kit-keywords.json"
+else
+  KEYWORDS_FILE="$ROOT/context-loader/project-keywords.json"
+fi
+KEYWORDS_FILE=$(normalize_path "$KEYWORDS_FILE")
+
 LOG_FILE="$ROOT/memory/.auto-context-log"
+DAEMON_ERR_LOG="$ROOT/memory/.daemon-errors.log"
 
 # Guards — python3 is required; keywords file must exist
 [ -f "$KEYWORDS_FILE" ] || exit 0
@@ -43,6 +69,8 @@ INPUT=$(cat 2>/dev/null)
 PROMPT_LOWER=$(echo "$INPUT" | tr '[:upper:]' '[:lower:]')
 TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 PROMPT_SNIPPET=$(echo "$INPUT" | head -c 120 | tr '\n' ' ')
+
+mkdir -p "$(dirname "$DAEMON_ERR_LOG")" 2>/dev/null || true
 
 python3 - "$KEYWORDS_FILE" "$ROOT" "$PROMPT_LOWER" "$LOG_FILE" "$TIMESTAMP" "$PROMPT_SNIPPET" 2>>"$DAEMON_ERR_LOG" <<'PYEOF'
 import sys, json, os
@@ -63,6 +91,7 @@ def normalize(p):
     return p
 
 root = normalize(root)
+keywords_file = normalize(keywords_file)
 
 try:
     with open(keywords_file, encoding='utf-8') as f:
@@ -78,7 +107,7 @@ matched_keys = []
 matched_display_kws = []
 
 for entry_key, entry in keyword_dict.items():
-    if entry_key == '_comment':
+    if entry_key.startswith('_'):
         continue
     if not isinstance(entry, dict):
         continue
@@ -125,6 +154,8 @@ for entry_key in matched_keys:
 
     block = (
         f'[AUTO-CONTEXT] keyword={entry_key}\n'
+        f'Project root: {root}\n'
+        f'Keywords file: {keywords_file}\n'
         f'Project files for this topic:\n'
         + '\n'.join(file_list_lines) +
         f'\n\nPriority file excerpt — {priority_file_rel} (first 40 lines):\n'
@@ -148,6 +179,8 @@ try:
         f.write('---\n')
         f.write(f'ts={timestamp}\n')
         f.write(f'prompt_snippet={prompt_snippet}\n')
+        f.write(f'keywords_file={keywords_file}\n')
+        f.write(f'project_root={root}\n')
         f.write(f'keywords_matched={", ".join(matched_display_kws)}\n')
         f.write(f'files_surfaced={", ".join(files_surfaced)}\n')
         f.write(f'lines_emitted={total_lines} bytes_emitted={total_bytes}\n')
