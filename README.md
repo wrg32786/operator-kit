@@ -4,79 +4,137 @@
 
 # AIgent Operator Kit
 
-**Five specialists. One install. Drop them into `~/.claude/agents/`.**
+**Five focused Claude Code specialists. One small install.**
 
-Five Claude Code subagents that each do one job well (design, build, scout, research, critique), plus a context-loader hook that stops you re-explaining your project every session. MIT licensed. Use them as-is or adapt them.
+Echo maps, Newton researches, Hypatia challenges, Iris specifies, and Lyra builds. The optional context-loader hook adds a relevant file map and priority excerpt when your prompt mentions a configured project topic.
+
+MIT licensed. The five agents are plain Markdown; the optional hook uses Bash and Python 3.8+.
 
 </div>
 
 ## Install
 
-One line. Backs up your `settings.json`, installs the agents, and wires the context-loader hook (idempotent, never clobbers existing hooks):
+### Recommended: Claude Code plugin
+
+```text
+/plugin marketplace add wrg32786/operator-kit
+/plugin install operator-kit@operator-kit
+```
+
+Plugin agents are namespaced, for example `operator-kit:echo`. Use the plugin or the legacy installer, not both; an older user-scope install can leave duplicate hooks and unscoped agents in place. Restart Claude Code after installation, then invoke one naturally or with an agent mention:
+
+```text
+use operator-kit:echo to find every place we call the Stripe API
+```
+
+### Legacy user-scope install
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/wrg32786/operator-kit/main/install.sh | bash
 ```
 
-Prefer to do it by hand? Just copy the agents:
+The legacy installer places unscoped agents under `~/.claude/agents/operator-kit/`, preserves existing configuration, backs up customized agent files before replacing them, and wires the optional hook only when Python 3.8+ is available.
+
+Manual agents-only install:
 
 ```bash
-cp agents/*.md ~/.claude/agents/
-```
-
-Claude Code auto-discovers agents in that directory. Restart it, then invoke one:
-
-```
-use the echo agent to find every place we call the Stripe API
+mkdir -p ~/.claude/agents/operator-kit
+cp agents/*.md ~/.claude/agents/operator-kit/
 ```
 
 ## The agents
 
-One agent per job beats one generalist at average quality. Compose them: Echo finds the files, Newton researches the approach, Hypatia challenges it, Lyra builds it.
-
-| Agent | Role | Example task |
+| Agent | Job | Example task |
 |---|---|---|
-| **Iris** | Visual designer (specs, not code) | "Iris, design the dashboard empty-state: palette, hierarchy, motion." |
-| **Lyra** | Builder (bounded diffs) | "Lyra, add optimistic updates to the comment box. Return a diff." |
-| **Echo** | Scout (read-only, fast) | "Echo, list every route handler under `src/api/`." |
-| **Newton** | Research synthesist (cited) | "Newton, Drizzle vs Prisma for our schema, with sources." |
-| **Hypatia** | Critic (devil's advocate) | "Hypatia, poke holes in this migration plan before I run it." |
+| **Echo** | Read-only codebase scout | “Echo, trace every caller of `createInvoice` and return paths and lines.” |
+| **Newton** | Current, cited research | “Newton, compare Drizzle and Prisma for this schema using primary sources.” |
+| **Hypatia** | Adversarial decision review | “Hypatia, find the strongest reason not to run this migration.” |
+| **Iris** | Visual specification | “Iris, specify the dashboard empty state: hierarchy, type, spacing, and motion.” |
+| **Lyra** | Bounded implementation | “Lyra, implement this accepted spec and run the smallest relevant check.” |
 
-Two patterns worth calling out. **Lyra and Newton end every response with an honesty ledger**: what changed, what was left alone, what was noticed but not fixed, what is still uncertain. You stay informed even when you are moving fast. **Iris writes specs, not code**: a brief precise enough that a builder implements without guessing.
+Compose them through the main Claude Code session:
 
-## The context loader
+```text
+Echo maps the flow → Newton checks external constraints → Hypatia challenges the plan → Iris specifies the visual surface → Lyra implements and verifies
+```
 
-A `UserPromptSubmit` hook. Mention a keyword you have configured ("auth flow", "payments") and the relevant project files are injected into context before the agent responds. Structural enforcement, not a memory note: it fires every time, not just when you remember to.
+The boundaries are enforced in frontmatter, not just prose. Echo, Hypatia, and Iris receive only read tools. Newton receives read and web-research tools. Lyra alone receives write and shell tools.
 
-```jsonc
-// operator-kit-keywords.json
-"auth": {
-  "keywords": ["auth flow", "login", "session"],
-  "priority_file": "docs/auth.md",
-  "files": ["docs/auth.md", "src/lib/session.ts"]
+## Context loader
+
+The plugin includes a silent `UserPromptSubmit` hook. It does nothing until you add a keywords file.
+
+Recommended project setup:
+
+```bash
+mkdir -p .claude
+cp examples/sample-project-keywords.json .claude/operator-kit-keywords.json
+```
+
+Example entry:
+
+```json
+{
+  "auth": {
+    "keywords": ["authentication", "auth flow", "login", "session"],
+    "priority_file": "docs/auth.md",
+    "files": [
+      "docs/auth.md",
+      "src/lib/session.ts"
+    ]
+  }
 }
 ```
 
-The installer drops a starter keywords file at `~/.claude/hooks/operator-kit-keywords.json`. Point its entries at files relative to the Claude Code workspace you launch from, restart, and type a keyword to see the `[AUTO-CONTEXT]` block appear. If your hook runner uses a different working directory, set `PROJECT_ROOT=/absolute/path/to/project`. Full walkthrough in [`context-loader/install.md`](context-loader/install.md).
+When a submitted prompt contains one of those whole words or phrases, the hook adds:
 
-## The critical-rules template
+- The first 40 lines of `priority_file`.
+- A map of the configured project paths.
+- An instruction to read the relevant paths before making claims or changes.
 
-`rules/post-compact-critical.md.template` is a starting point for rules that must survive a long session. When Claude Code compacts, most history is lost; files wired into your project settings do not. Capture the things that cannot drift: database invariants, style rules, known footguns, verification gates.
+It matches only the submitted `prompt`, not hook metadata or directory names. Paths must remain inside the project root. The hook writes nothing into the project and debug logging is off by default.
 
-## What's in it
+Full configuration and troubleshooting: [`context-loader/install.md`](context-loader/install.md).
 
+## Critical rules
+
+`rules/post-compact-critical.md.template` is a starter for invariants that must survive long sessions and context compaction.
+
+Copy it to Claude Code’s native project-rules directory:
+
+```bash
+mkdir -p .claude/rules
+cp rules/post-compact-critical.md.template .claude/rules/critical.md
 ```
+
+Use it for production/test boundaries, architectural invariants, known footguns, and required verification—not general documentation.
+
+## Repository
+
+```text
 operator-kit/
-├── agents/          # iris · lyra · echo · newton · hypatia  → ~/.claude/agents/
-├── context-loader/  # auto-context-load.sh + keywords + install guide
-├── rules/           # post-compact rules template
-├── examples/        # a filled-out keywords file
-└── install.sh       # one-click installer
+├── .claude-plugin/  # plugin manifest + marketplace catalog
+├── agents/          # echo · hypatia · iris · lyra · newton
+├── context-loader/  # hook wrapper, standard-library loader, guide, starter config
+├── examples/        # filled-out project keywords example
+├── hooks/           # native plugin hook registration
+├── rules/           # critical project-rules template
+├── tests/           # one dependency-free smoke check
+└── install.sh       # legacy user-scope installer
 ```
+
+## Validate
+
+```bash
+python3 tests/smoke.py
+claude plugin validate .
+```
+
+The smoke check validates agent schemas and tool boundaries, JSON and shell syntax, prompt-only keyword matching, path containment, no-write default behavior, invalid-settings protection, legacy-hook migration, and installer idempotency.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The agents are self-contained: no private skills, no hidden dependencies, nothing to phone home.
+MIT. See [LICENSE](LICENSE). The five agents are self-contained; the optional context loader uses only Python’s standard library.
 
 ---
 
@@ -84,6 +142,6 @@ MIT. See [LICENSE](LICENSE). The agents are self-contained: no private skills, n
 
 Built by **[The AIgent](https://theaigent.xyz)**. A weekly digest on running Claude Code at scale: **[theaigent.xyz](https://theaigent.xyz)**
 
-Want the full operator system these agents run inside? **[aigent-OS](https://github.com/wrg32786/aigent-os)** — free & open-source (MIT).
+Want the full operator system these agents run inside? **[aigent-OS](https://github.com/wrg32786/aigent-os)** — free and open source (MIT).
 
 </div>

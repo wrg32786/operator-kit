@@ -1,132 +1,89 @@
-# Context Loader — Install Guide
+# Context Loader — Install and Configure
 
-The context loader is a UserPromptSubmit hook for Claude Code. When you mention a keyword in your prompt, it automatically injects the relevant project files into context before the agent responds. No more re-explaining what you're working on every session.
+The context loader is an optional Claude Code `UserPromptSubmit` hook. When the submitted prompt contains a configured whole word or phrase, it adds two things before Claude responds:
 
-## What it does
+1. The first 40 lines of one priority file.
+2. A map of other relevant project paths Claude should read before making claims or changes.
 
-1. You mention "auth flow" or "payments" or whatever keyword you configure
-2. The hook fires before Claude responds
-3. Claude sees a context block with your relevant files already loaded
-4. Claude answers with full project knowledge, not blank-slate guessing
+It does not dump every configured file into the context window.
 
-This is structural enforcement, not a memory note. It fires every time, not just when you remember to mention it.
-
-## Prerequisites
-
-- Claude Code installed and working
-- `python3` available on your PATH (used for JSON parsing)
-- Git Bash or WSL if you're on Windows (the hook is a bash script)
-
-## One-line install behavior
-
-The main installer places the hook and starter keywords file here:
+## Recommended: install the plugin
 
 ```text
-~/.claude/hooks/auto-context-load.sh
-~/.claude/hooks/operator-kit-keywords.json
+/plugin marketplace add wrg32786/operator-kit
+/plugin install operator-kit@operator-kit
 ```
 
-After installing, edit:
+The plugin includes the hook. It remains silent until a keywords file exists. Use the plugin or the legacy user-scope installer, not both.
+
+Create a project-local mapping:
 
 ```bash
-~/.claude/hooks/operator-kit-keywords.json
+mkdir -p .claude
+cp examples/sample-project-keywords.json .claude/operator-kit-keywords.json
 ```
 
-Add keywords and project files relative to the Claude Code workspace you launch from. Example:
-
-```json
-"auth": {
-  "keywords": ["auth", "login", "session"],
-  "priority_file": "docs/auth.md",
-  "files": [
-    "docs/auth.md",
-    "src/lib/session.ts"
-  ]
-}
-```
-
-If your hook runner does not use your project directory as its working directory, set `PROJECT_ROOT` explicitly:
-
-```bash
-export PROJECT_ROOT="/absolute/path/to/your-project"
-```
-
-You can also point the hook at a different keywords file:
-
-```bash
-export OPERATOR_KIT_KEYWORDS="/absolute/path/to/operator-kit-keywords.json"
-```
-
-## Manual project-local install
-
-If you prefer to keep the hook inside a single project, place these two files in your repo:
-
-```text
-your-project/
-  context-loader/
-    auto-context-load.sh
-    project-keywords.json
-```
-
-Then make the script executable:
-
-```bash
-chmod +x context-loader/auto-context-load.sh
-```
-
-Open or create `.claude/settings.json` in your project root and add the hook:
+Then replace the sample paths with paths from the current project:
 
 ```json
 {
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash /absolute/path/to/your-project/context-loader/auto-context-load.sh"
-          }
-        ]
-      }
+  "auth": {
+    "keywords": ["authentication", "auth flow", "login", "session"],
+    "priority_file": "docs/auth.md",
+    "files": [
+      "docs/auth.md",
+      "src/lib/session.ts"
     ]
   }
 }
 ```
 
-Use an absolute path in the command. Claude Code's working directory can vary.
+Paths must be relative to the Claude Code project root. Absolute paths and paths that escape the project with `..` are rejected.
 
-## Keywords file resolution order
+## Legacy user-scope installer
 
-The hook looks for keywords in this order:
+The root `install.sh` installs the agents and hook under `~/.claude/`. It stores the default user mapping at:
 
-1. `OPERATOR_KIT_KEYWORDS`, if set
-2. `~/.claude/hooks/operator-kit-keywords.json`, the one-line install default
-3. `operator-kit-keywords.json` next to the hook script
-4. `<PROJECT_ROOT>/context-loader/project-keywords.json`, the project-local fallback
+```text
+~/.claude/operator-kit-keywords.json
+```
 
-Paths inside the keywords file are resolved relative to `PROJECT_ROOT`, or the current Claude Code workspace if `PROJECT_ROOT` is not set.
+Project-local configuration takes precedence over the user-level fallback.
+
+## Resolution order
+
+The loader searches for its mapping in this order:
+
+1. `OPERATOR_KIT_KEYWORDS`, when explicitly set.
+2. `<project>/.claude/operator-kit-keywords.json`.
+3. `<project>/context-loader/project-keywords.json` for legacy project-local installs.
+4. `~/.claude/operator-kit-keywords.json`.
+5. `~/.claude/hooks/operator-kit-keywords.json` for legacy user installs.
+
+The project root is resolved from `PROJECT_ROOT`, then the hook payload's `cwd`, then `CLAUDE_PROJECT_DIR`, then the process working directory.
 
 ## Test it
 
-Open a new Claude Code session in your project. Type a prompt containing one of your keywords. You should see an `[AUTO-CONTEXT]` block appear before Claude's response.
+Start a new Claude Code session in the configured project and submit a prompt containing one of the trigger phrases. The hook should add an `<operator-kit-context>` block before the response.
 
-The hook also logs every fire to `memory/.auto-context-log` in your project root — useful for verifying it's working and seeing what got surfaced.
+Matching is case-insensitive and boundary-aware. A trigger of `auth` matches `auth` but not `reauthenticate`.
 
-## Limits
+## Limits and privacy
 
-- Total context injected per prompt: ~80KB / 3000 lines across all matched keywords
-- Per priority file: first 40 lines excerpted
-- If the keywords file is missing or python3 is unavailable, the hook exits silently
+- Maximum output per prompt: 80 KiB or 3,000 lines.
+- Maximum priority excerpt: 40 lines per matched topic.
+- Missing Python, invalid JSON, or no match causes a silent no-op.
+- The loader does not write into the project.
+- Debug logging is off by default. Set `OPERATOR_KIT_DEBUG=1` to write non-prompt diagnostic metadata under `~/.claude/logs/operator-kit/`.
 
 ## Troubleshooting
 
-**Hook never fires:** Confirm `~/.claude/hooks/operator-kit-keywords.json` exists, contains a keyword from your prompt, and the script is executable.
+**Hook never fires:** Confirm the mapping exists, contains a phrase from the submitted prompt, and points at files relative to the correct project root.
 
-**Files show as not found:** Set `PROJECT_ROOT` to your project path, or launch Claude Code from the project root.
+**Files show as not found:** Launch Claude Code from the project, or set `PROJECT_ROOT=/absolute/path/to/project`.
 
-**"python3 not found":** Install Python 3 or update the script to use `python` if that's your binary name.
+**Python is unavailable:** Install Python 3.8 or newer, set `OPERATOR_KIT_PYTHON` to a compatible Python executable, or use only the five agents.
 
-**Wrong files surfacing:** Check your keyword strings — matching is case-insensitive substring, so "auth" will also match "authentication" and "reauth".
+**Wrong topic fires:** Use a more specific phrase. Avoid broad triggers such as `db`, `ci`, or `cd`.
 
-**Windows path issues:** The script normalizes `/c/Users/...` Git Bash paths to `C:/Users/...` automatically. If you still get path errors, set `PROJECT_ROOT` explicitly as a Windows-style path in your shell profile.
+**Need diagnostics:** Set `OPERATOR_KIT_DEBUG=1`, reproduce once, and inspect `~/.claude/logs/operator-kit/context-loader.log`.

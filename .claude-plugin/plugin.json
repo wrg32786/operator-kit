@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "operator-kit",
+  "displayName": "AIgent Operator Kit",
+  "version": "2.1.0",
+  "description": "Five focused Claude Code subagents plus an optional keyword-triggered context loader.",
+  "author": {
+    "name": "The AIgent",
+    "url": "https://theaigent.xyz"
+  },
+  "homepage": "https://github.com/wrg32786/operator-kit#readme",
+  "repository": "https://github.com/wrg32786/operator-kit",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "subagents",
+    "context-loader",
+    "developer-tools"
+  ]
+}
