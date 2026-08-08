@@ -1,261 +1,303 @@
 #!/usr/bin/env bash
-# install.sh — operator-kit one-click installer
-#
-# Usage:
-#   bash install.sh
-#   curl -fsSL https://raw.githubusercontent.com/wrg32786/operator-kit/main/install.sh | bash
-#
-# What it does:
-#   1. Backs up ~/.claude/settings.json -> ~/.claude/settings.json.bak
-#   2. Copies agents/*.md to ~/.claude/agents/operator-kit/
-#   3. Copies context-loader/auto-context-load.sh to ~/.claude/hooks/ (chmod +x)
-#   4. Wires the UserPromptSubmit hook into settings.json (idempotent — no duplicate adds)
-#   5. Places project-keywords.json at ~/.claude/hooks/operator-kit-keywords.json
-#   6. Offers to place the rules template into your current project
-#   7. Prints success + restart reminder
-#
-# Idempotent: safe to run multiple times. Never clobbers existing hooks.
-# Requires: bash, python3 (for JSON merge fallback). jq is used when available.
+# Legacy user-scope installer for AIgent Operator Kit.
+# Recommended for new installs: use the Claude Code plugin marketplace.
 
 set -euo pipefail
 
-# ── resolve source directory ──────────────────────────────────────────────────
-# When run as `bash install.sh` from a local clone, BASH_SOURCE[0] points to
-# the script file and REPO_DIR contains agents/, context-loader/, rules/.
-# When run via `curl … | bash`, the script is piped through stdin — BASH_SOURCE[0]
-# is empty or "bash", so REPO_DIR resolves to the caller's CWD (no source files).
-# In that case we self-fetch the repo into a temp directory.
-# Only trust BASH_SOURCE as a clone path when it points to a REAL readable file.
-# When piped via curl|bash it is "bash"/empty, so this leaves _SCRIPT_DIR empty
-# and forces self-fetch — without this guard, running the one-liner from any dir
-# that happens to contain an agents/ folder copies the wrong files (live-QA catch).
-if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
-  _SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-else
-  _SCRIPT_DIR=""
-fi
 REPO_URL="https://github.com/wrg32786/operator-kit.git"
-_TMPDIR=""
+RAW_URL="https://raw.githubusercontent.com/wrg32786/operator-kit/main"
+TMP_DIR=""
+STAMP="$(date -u +%Y%m%d-%H%M%S)-$$"
 
-# Cleanup temp dir on exit (no-op if we never created one).
-# Explicitly return 0 so the trap never overrides a successful script exit code.
-_cleanup() { [ -n "$_TMPDIR" ] && rm -rf "$_TMPDIR"; return 0; }
-trap _cleanup EXIT
+cleanup() {
+  [ -n "$TMP_DIR" ] && rm -rf "$TMP_DIR"
+  return 0
+}
+trap cleanup EXIT
 
-if [ -n "$_SCRIPT_DIR" ] && [ -d "$_SCRIPT_DIR/agents" ] && [ -d "$_SCRIPT_DIR/context-loader" ] && [ -f "$_SCRIPT_DIR/install.sh" ]; then
-  # Running from a genuine local clone (dir is actually operator-kit) — use in place
-  SRC="$_SCRIPT_DIR"
+if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then
+  SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 else
-  # Piped via curl|bash (or run from a directory without the repo files).
-  # Self-fetch the repo so we have the source files to copy.
-  echo "[operator-kit] curl|bash mode detected — fetching source files..."
-  _TMPDIR="$(mktemp -d)"
-  SRC="$_TMPDIR/operator-kit"
+  SCRIPT_DIR=""
+fi
+
+if [ -n "$SCRIPT_DIR" ] \
+  && [ -d "$SCRIPT_DIR/agents" ] \
+  && [ -f "$SCRIPT_DIR/context-loader/auto-context-load.sh" ] \
+  && [ -f "$SCRIPT_DIR/context-loader/context_loader.py" ] \
+  && [ -f "$SCRIPT_DIR/install.sh" ]; then
+  SRC="$SCRIPT_DIR"
+else
+  TMP_DIR="$(mktemp -d)"
+  SRC="$TMP_DIR/operator-kit"
+  printf '[operator-kit] Fetching source files...\n'
 
   if command -v git >/dev/null 2>&1; then
     git clone --depth 1 "$REPO_URL" "$SRC"
   else
-    # Fallback: git not available — curl each file individually.
-    echo "[operator-kit] git not found, downloading files via curl..."
-    RAW="https://raw.githubusercontent.com/wrg32786/operator-kit/main"
-    mkdir -p \
-      "$SRC/agents" \
-      "$SRC/context-loader" \
-      "$SRC/rules"
-    # agents
+    command -v curl >/dev/null 2>&1 || {
+      printf '[operator-kit] ERROR: git or curl is required to fetch the kit.\n' >&2
+      exit 1
+    }
+    mkdir -p "$SRC/agents" "$SRC/context-loader" "$SRC/rules"
     for agent in echo hypatia iris lyra newton; do
-      curl -fsSL "$RAW/agents/$agent.md" -o "$SRC/agents/$agent.md"
+      curl -fsSL "$RAW_URL/agents/$agent.md" -o "$SRC/agents/$agent.md"
     done
-    # context-loader
-    curl -fsSL "$RAW/context-loader/auto-context-load.sh" \
+    curl -fsSL "$RAW_URL/context-loader/auto-context-load.sh" \
       -o "$SRC/context-loader/auto-context-load.sh"
-    curl -fsSL "$RAW/context-loader/project-keywords.json" \
+    curl -fsSL "$RAW_URL/context-loader/context_loader.py" \
+      -o "$SRC/context-loader/context_loader.py"
+    curl -fsSL "$RAW_URL/context-loader/project-keywords.json" \
       -o "$SRC/context-loader/project-keywords.json"
-    # rules template
-    curl -fsSL "$RAW/rules/post-compact-critical.md.template" \
+    curl -fsSL "$RAW_URL/rules/post-compact-critical.md.template" \
       -o "$SRC/rules/post-compact-critical.md.template"
   fi
 fi
 
 CLAUDE_DIR="$HOME/.claude"
 AGENTS_DEST="$CLAUDE_DIR/agents/operator-kit"
-HOOKS_DEST="$CLAUDE_DIR/hooks"
+HOOK_DEST="$CLAUDE_DIR/hooks/operator-kit"
 SETTINGS="$CLAUDE_DIR/settings.json"
-# Use explicit 'bash' — Claude Code's hook runner uses bash regardless of $SHELL
-HOOK_CMD="bash $HOOKS_DEST/auto-context-load.sh"
+KEYWORDS_DEST="$CLAUDE_DIR/operator-kit-keywords.json"
+LEGACY_KEYWORDS="$CLAUDE_DIR/hooks/operator-kit-keywords.json"
+HOOK_PATH="$HOOK_DEST/auto-context-load.sh"
+LEGACY_HOOK_PATH="$CLAUDE_DIR/hooks/auto-context-load.sh"
 
-# ── colours ──────────────────────────────────────────────────────────────────
-GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
-info()    { echo -e "${GREEN}[operator-kit]${NC} $*"; }
-warn()    { echo -e "${YELLOW}[operator-kit]${NC} $*"; }
-err()     { echo -e "${RED}[operator-kit]${NC} $*" >&2; }
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+RESET='\033[0m'
 
-# ── step 1: backup settings.json ─────────────────────────────────────────────
-info "Step 1/5 — Backing up settings.json"
-mkdir -p "$CLAUDE_DIR"
-if [ -f "$SETTINGS" ]; then
-  cp "$SETTINGS" "${SETTINGS}.bak"
-  info "  Backup written to ${SETTINGS}.bak"
-else
-  info "  settings.json does not exist yet — will create it"
-fi
+info() { printf '%b[operator-kit]%b %s\n' "$GREEN" "$RESET" "$*"; }
+warn() { printf '%b[operator-kit]%b %s\n' "$YELLOW" "$RESET" "$*"; }
+fail() { printf '%b[operator-kit] ERROR:%b %s\n' "$RED" "$RESET" "$*" >&2; }
 
-# ── step 2: copy agents ──────────────────────────────────────────────────────
-info "Step 2/5 — Installing agents to $AGENTS_DEST"
-mkdir -p "$AGENTS_DEST"
-for f in "$SRC"/agents/*.md; do
-  cp "$f" "$AGENTS_DEST/"
-  info "  Installed $(basename "$f")"
+PYTHON_BIN=""
+for candidate in "${OPERATOR_KIT_PYTHON:-}" python3 python; do
+  [ -n "$candidate" ] || continue
+  command -v "$candidate" >/dev/null 2>&1 || continue
+  if "$candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 8) else 1)' >/dev/null 2>&1; then
+    PYTHON_BIN="$candidate"
+    break
+  fi
 done
 
-# ── step 3: install hook script ──────────────────────────────────────────────
-info "Step 3/5 — Installing context-loader hook"
-mkdir -p "$HOOKS_DEST"
-cp "$SRC/context-loader/auto-context-load.sh" "$HOOKS_DEST/auto-context-load.sh"
-chmod +x "$HOOKS_DEST/auto-context-load.sh"
-info "  Installed auto-context-load.sh (executable)"
+# Validate settings before touching the installation. Invalid JSON must remain untouched.
+if [ -n "$PYTHON_BIN" ] && [ -f "$SETTINGS" ]; then
+  if ! "$PYTHON_BIN" - "$SETTINGS" <<'PYEOF'
+import json
+import sys
 
-# ── step 3b: place keywords template ─────────────────────────────────────────
-KEYWORDS_DEST="$HOOKS_DEST/operator-kit-keywords.json"
-if [ ! -f "$KEYWORDS_DEST" ]; then
-  cp "$SRC/context-loader/project-keywords.json" "$KEYWORDS_DEST"
-  info "  Placed starter project-keywords.json at $KEYWORDS_DEST"
-else
-  info "  Skipped keywords.json (already exists at $KEYWORDS_DEST)"
+path = sys.argv[1]
+try:
+    with open(path, encoding="utf-8") as handle:
+        data = json.load(handle)
+except json.JSONDecodeError as exc:
+    print(f"settings.json is invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}", file=sys.stderr)
+    raise SystemExit(1)
+
+if not isinstance(data, dict):
+    print("settings.json must contain a JSON object", file=sys.stderr)
+    raise SystemExit(1)
+
+hooks = data.get("hooks", {})
+if not isinstance(hooks, dict):
+    print("settings.json field 'hooks' must be an object", file=sys.stderr)
+    raise SystemExit(1)
+
+entries = hooks.get("UserPromptSubmit", [])
+if not isinstance(entries, list):
+    print("settings.json field 'hooks.UserPromptSubmit' must be an array", file=sys.stderr)
+    raise SystemExit(1)
+PYEOF
+  then
+    fail "Refusing to modify invalid $SETTINGS. Fix it first; no files were installed."
+    exit 1
+  fi
 fi
 
-# ── step 4: wire UserPromptSubmit hook into settings.json ────────────────────
-info "Step 4/5 — Wiring UserPromptSubmit hook"
+info "Installing five agents"
+mkdir -p "$(dirname "$AGENTS_DEST")"
+if [ -d "$AGENTS_DEST" ] && ! diff -qr "$SRC/agents" "$AGENTS_DEST" >/dev/null 2>&1; then
+  AGENTS_BACKUP="${AGENTS_DEST}.backup-$STAMP"
+  cp -R "$AGENTS_DEST" "$AGENTS_BACKUP"
+  warn "Backed up customized agents to $AGENTS_BACKUP"
+fi
+mkdir -p "$AGENTS_DEST"
+for file in "$SRC"/agents/*.md; do
+  cp "$file" "$AGENTS_DEST/"
+done
 
-# The hook entry we want to add
-HOOK_ENTRY='{"matcher":"*","hooks":[{"type":"command","command":"'"$HOOK_CMD"'"}]}'
+if [ -z "$PYTHON_BIN" ]; then
+  warn "Python 3.8+ was not found. Agents were installed; the optional context loader was skipped."
+else
+  info "Installing the optional context loader"
+  HOOK_CHANGED=0
+  for file in auto-context-load.sh context_loader.py; do
+    if [ -f "$HOOK_DEST/$file" ] && ! cmp -s "$SRC/context-loader/$file" "$HOOK_DEST/$file"; then
+      HOOK_CHANGED=1
+    fi
+  done
+  if [ "$HOOK_CHANGED" -eq 1 ]; then
+    HOOK_BACKUP="${HOOK_DEST}.backup-$STAMP"
+    cp -R "$HOOK_DEST" "$HOOK_BACKUP"
+    warn "Backed up the previous context loader to $HOOK_BACKUP"
+  fi
+  mkdir -p "$HOOK_DEST"
+  cp "$SRC/context-loader/auto-context-load.sh" "$HOOK_PATH"
+  cp "$SRC/context-loader/context_loader.py" "$HOOK_DEST/context_loader.py"
+  chmod +x "$HOOK_PATH"
 
-wire_with_jq() {
-  # Idempotency guard: is our command already present?
-  if jq -e --arg cmd "$HOOK_CMD" \
-    '.hooks.UserPromptSubmit // [] | map(.hooks // [] | map(.command) | any(. == $cmd)) | any' \
-    "$SETTINGS" > /dev/null 2>&1; then
-    warn "  Hook already wired (idempotent — skipped duplicate add)"
-    return 0
+  if [ ! -f "$KEYWORDS_DEST" ]; then
+    if [ -f "$LEGACY_KEYWORDS" ]; then
+      cp "$LEGACY_KEYWORDS" "$KEYWORDS_DEST"
+      info "Migrated the existing keywords file to $KEYWORDS_DEST"
+    else
+      cp "$SRC/context-loader/project-keywords.json" "$KEYWORDS_DEST"
+      info "Created the starter keywords file at $KEYWORDS_DEST"
+    fi
+  else
+    info "Kept the existing keywords file at $KEYWORDS_DEST"
   fi
 
-  # Merge: append entry to hooks.UserPromptSubmit array (create path if missing)
-  local tmp
-  tmp=$(mktemp)
-  jq --argjson entry "$HOOK_ENTRY" '
-    .hooks.UserPromptSubmit = ((.hooks.UserPromptSubmit // []) + [$entry])
-  ' "$SETTINGS" > "$tmp" && mv "$tmp" "$SETTINGS"
-  info "  Hook wired via jq"
-}
+  info "Wiring the UserPromptSubmit hook"
+  "$PYTHON_BIN" - "$SETTINGS" "$HOOK_PATH" "$LEGACY_HOOK_PATH" "$STAMP" <<'PYEOF'
+import json
+import os
+import shutil
+import sys
+import tempfile
 
-wire_with_python() {
-  python3 - "$SETTINGS" "$HOOK_ENTRY" "$HOOK_CMD" <<'PYEOF'
-import sys, json, os, shutil
+settings_path, hook_path, legacy_hook_path, stamp = sys.argv[1:]
+if os.path.islink(settings_path):
+    settings_path = os.path.realpath(settings_path)
 
-settings_path = sys.argv[1]
-hook_entry_str = sys.argv[2]
-hook_cmd = sys.argv[3]
-
-# Load or initialize
 if os.path.isfile(settings_path):
-    with open(settings_path, encoding='utf-8') as f:
-        try:
-            settings = json.load(f)
-        except json.JSONDecodeError:
-            print("[operator-kit] WARNING: settings.json is not valid JSON — creating fresh",
-                  file=sys.stderr)
-            settings = {}
+    with open(settings_path, encoding="utf-8") as handle:
+        settings = json.load(handle)
 else:
     settings = {}
 
-# Ensure hooks structure exists
-if 'hooks' not in settings:
-    settings['hooks'] = {}
-if 'UserPromptSubmit' not in settings['hooks']:
-    settings['hooks']['UserPromptSubmit'] = []
+hooks = settings.setdefault("hooks", {})
+entries = hooks.setdefault("UserPromptSubmit", [])
 
-# Idempotency check: is the command already present?
-for entry in settings['hooks']['UserPromptSubmit']:
-    for hook in entry.get('hooks', []):
-        if hook.get('command') == hook_cmd:
-            print("[operator-kit] Hook already wired (idempotent — skipped duplicate add)")
-            sys.exit(0)
-
-# Add the new hook entry
-hook_entry = json.loads(hook_entry_str)
-settings['hooks']['UserPromptSubmit'].append(hook_entry)
-
-# Write atomically via temp file
-tmp = settings_path + '.tmp'
-with open(tmp, 'w', encoding='utf-8') as f:
-    json.dump(settings, f, indent=2)
-    f.write('\n')
-shutil.move(tmp, settings_path)
-print("[operator-kit] Hook wired via python3")
-PYEOF
+legacy_commands = {
+    f"bash {hook_path}",
+    f"bash {legacy_hook_path}",
+    hook_path,
+    legacy_hook_path,
 }
 
-# Initialise settings.json if missing
-if [ ! -f "$SETTINGS" ]; then
-  echo '{}' > "$SETTINGS"
+
+def is_operator_hook(hook):
+    if not isinstance(hook, dict):
+        return False
+    command = hook.get("command")
+    args = hook.get("args")
+    if command in legacy_commands:
+        return True
+    return (
+        command == "bash"
+        and isinstance(args, list)
+        and len(args) == 1
+        and args[0] in {hook_path, legacy_hook_path}
+    )
+
+
+cleaned_entries = []
+for entry in entries:
+    if not isinstance(entry, dict):
+        cleaned_entries.append(entry)
+        continue
+    inner = entry.get("hooks")
+    if not isinstance(inner, list):
+        cleaned_entries.append(entry)
+        continue
+    remaining = [hook for hook in inner if not is_operator_hook(hook)]
+    if remaining:
+        updated = dict(entry)
+        updated["hooks"] = remaining
+        cleaned_entries.append(updated)
+
+cleaned_entries.append(
+    {
+        "hooks": [
+            {
+                "type": "command",
+                "command": "bash",
+                "args": [hook_path],
+            }
+        ]
+    }
+)
+
+updated_settings = dict(settings)
+updated_hooks = dict(hooks)
+updated_hooks["UserPromptSubmit"] = cleaned_entries
+updated_settings["hooks"] = updated_hooks
+
+if updated_settings == settings:
+    print("[operator-kit] Hook already wired")
+    raise SystemExit(0)
+
+os.makedirs(os.path.dirname(settings_path), exist_ok=True)
+if os.path.isfile(settings_path):
+    backup = f"{settings_path}.backup-{stamp}"
+    shutil.copy2(settings_path, backup)
+    print(f"[operator-kit] Backed up settings to {backup}")
+
+fd, temp_path = tempfile.mkstemp(prefix="settings.", suffix=".tmp", dir=os.path.dirname(settings_path))
+try:
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(updated_settings, handle, indent=2)
+        handle.write("\n")
+    if os.path.isfile(settings_path):
+        shutil.copymode(settings_path, temp_path)
+    os.replace(temp_path, settings_path)
+finally:
+    if os.path.exists(temp_path):
+        os.unlink(temp_path)
+
+print("[operator-kit] Hook wired")
+PYEOF
 fi
 
-if command -v jq >/dev/null 2>&1; then
-  wire_with_jq
-elif command -v python3 >/dev/null 2>&1; then
-  wire_with_python
+info "Critical-rules template"
+RULES_SOURCE="$SRC/rules/post-compact-critical.md.template"
+RULES_TARGET="./.claude/rules/critical.md"
+INSTALL_RULES="${OPERATOR_KIT_INSTALL_RULES:-}"
+
+if [ "$INSTALL_RULES" = "1" ]; then
+  answer="y"
+elif [ "$INSTALL_RULES" = "0" ]; then
+  answer="n"
+elif [ -r /dev/tty ] && [ -w /dev/tty ]; then
+  printf '\nCopy the critical-rules template to %s? [y/N] ' "$RULES_TARGET" >/dev/tty
+  read -r answer </dev/tty || answer="n"
 else
-  err "  Neither jq nor python3 found. Add the hook manually:"
-  echo ""
-  echo "  Open $SETTINGS and add under hooks.UserPromptSubmit:"
-  echo "  $HOOK_ENTRY"
-  echo ""
-  warn "  All other steps completed. Only the settings.json wire is missing."
+  answer="n"
 fi
 
-# ── step 5: offer rules template ─────────────────────────────────────────────
-info "Step 5/5 — Rules template"
-RULES_TEMPLATE="$SRC/rules/post-compact-critical.md.template"
-
-# Bug 2 fix: never read from stdin when stdin IS the script (curl|bash mode).
-# Read from /dev/tty (the real terminal) only when it is genuinely accessible.
-# We probe with a subshell so any open/tty failure can't abort the main script
-# (set -e applies inside subshells but the exit code is just used as a boolean).
-# Fall back to "n" — the else branch prints the manual cp command.
-yn="n"
-_tty_available() { exec </dev/tty && tty -s; }
-if ( _tty_available ) 2>/dev/null; then
-  echo ""
-  warn "Optional: copy the post-compact rules template into your current project?"
-  warn "  Source: $RULES_TEMPLATE"
-  warn "  Target: ./rules/post-compact-critical.md  (in current directory)"
-  read -r -p "  Copy it? [y/N] " yn </dev/tty
-fi
-
-case "$yn" in
+case "$answer" in
   [Yy]*)
-    mkdir -p ./rules
-    cp "$RULES_TEMPLATE" ./rules/post-compact-critical.md
-    info "  Copied. Add '@rules/post-compact-critical.md' to your CLAUDE.md to wire it."
+    if [ -e "$RULES_TARGET" ]; then
+      warn "Kept the existing $RULES_TARGET"
+    else
+      mkdir -p "$(dirname "$RULES_TARGET")"
+      cp "$RULES_SOURCE" "$RULES_TARGET"
+      info "Created $RULES_TARGET"
+    fi
     ;;
   *)
-    info "  Skipped. Copy manually later:"
-    info "  cp $RULES_TEMPLATE ./rules/post-compact-critical.md"
+    info "Skipped. Copy later with: mkdir -p .claude/rules && curl -fsSL '$RAW_URL/rules/post-compact-critical.md.template' -o '$RULES_TARGET'"
     ;;
 esac
 
-# ── done ─────────────────────────────────────────────────────────────────────
-echo ""
-info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-info "operator-kit installed successfully."
-info ""
-info "Agents available:  echo, hypatia, iris, lyra, newton"
-info "Context loader:    $HOOKS_DEST/auto-context-load.sh"
-info "Keywords file:     $KEYWORDS_DEST"
-info ""
-info "Next steps:"
-info "  1. Edit $KEYWORDS_DEST to map your project's trigger words to files"
-info "  2. Restart Claude Code — hooks take effect on next launch"
-info "  3. Type a keyword in a prompt to verify the context loader fires"
-info "     (check the [AUTO-CONTEXT] block before Claude's response)"
-info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+printf '\n'
+info "Installation complete"
+info "Agents: $AGENTS_DEST"
+if [ -n "$PYTHON_BIN" ]; then
+  info "Context loader: $HOOK_PATH"
+  info "Keywords: $KEYWORDS_DEST"
+fi
+info "Restart Claude Code, then invoke echo, hypatia, iris, lyra, or newton."

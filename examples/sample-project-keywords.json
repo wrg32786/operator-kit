@@ -1,8 +1,7 @@
 {
-  "_comment": "Sample project-keywords.json for a fictional SaaS project (Acme). Copy this structure into your own project-keywords.json and replace with your actual keywords and file paths.",
-
+  "_comment": "Sample mapping for a fictional SaaS project. Copy this file to .claude/operator-kit-keywords.json and replace the paths with real project files.",
   "auth": {
-    "keywords": ["auth", "authentication", "login", "jwt", "session", "oauth"],
+    "keywords": ["authentication", "auth flow", "login", "session", "oauth"],
     "priority_file": "docs/auth-architecture.md",
     "files": [
       "docs/auth-architecture.md",
@@ -11,9 +10,8 @@
       "docs/auth-flow-diagram.md"
     ]
   },
-
   "payments": {
-    "keywords": ["payment", "stripe", "billing", "subscription", "invoice", "checkout"],
+    "keywords": ["payment flow", "stripe", "billing", "subscription", "invoice", "checkout"],
     "priority_file": "docs/payments-overview.md",
     "files": [
       "docs/payments-overview.md",
@@ -22,9 +20,8 @@
       "docs/stripe-webhook-events.md"
     ]
   },
-
   "database": {
-    "keywords": ["database", "schema", "migration", "postgres", "prisma", "db"],
+    "keywords": ["database", "schema migration", "postgres", "prisma"],
     "priority_file": "docs/database-schema.md",
     "files": [
       "docs/database-schema.md",
@@ -32,9 +29,8 @@
       "docs/migration-runbook.md"
     ]
   },
-
   "onboarding": {
-    "keywords": ["onboarding", "signup", "welcome flow", "new user", "activation"],
+    "keywords": ["onboarding", "signup flow", "welcome flow", "new user", "activation"],
     "priority_file": "docs/onboarding-spec.md",
     "files": [
       "docs/onboarding-spec.md",
@@ -42,9 +38,8 @@
       "src/components/OnboardingFlow.tsx"
     ]
   },
-
   "api": {
-    "keywords": ["api", "endpoint", "rest", "route handler", "api design"],
+    "keywords": ["API endpoint", "REST API", "route handler", "API design"],
     "priority_file": "docs/api-conventions.md",
     "files": [
       "docs/api-conventions.md",
@@ -52,9 +47,8 @@
       "src/app/api/"
     ]
   },
-
   "deployment": {
-    "keywords": ["deploy", "deployment", "vercel", "production", "staging", "ci", "cd", "pipeline"],
+    "keywords": ["deploy", "deployment", "vercel", "production release", "staging", "CI pipeline", "CD pipeline"],
     "priority_file": "docs/deployment-runbook.md",
     "files": [
       "docs/deployment-runbook.md",
