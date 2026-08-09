@@ -10,13 +10,20 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-VERSION = "2.1.1"
+PLUGIN_PATH = ROOT / ".claude-plugin" / "plugin.json"
+VERSION = json.loads(PLUGIN_PATH.read_text(encoding="utf-8"))["version"]
 AGENTS = {
-    "echo": {"Read", "Grep", "Glob"},
-    "hypatia": {"Read", "Grep", "Glob"},
-    "iris": {"Read", "Grep", "Glob"},
-    "lyra": {"Read", "Grep", "Glob", "Edit", "Write", "Bash"},
-    "newton": {"Read", "Grep", "Glob", "WebSearch", "WebFetch"},
+    "echo": {"tools": {"Read", "Grep", "Glob"}, "color": "cyan"},
+    "hypatia": {"tools": {"Read", "Grep", "Glob"}, "color": "red"},
+    "iris": {"tools": {"Read", "Grep", "Glob"}, "color": "purple"},
+    "lyra": {
+        "tools": {"Read", "Grep", "Glob", "Edit", "Write", "Bash"},
+        "color": "green",
+    },
+    "newton": {
+        "tools": {"Read", "Grep", "Glob", "WebSearch", "WebFetch"},
+        "color": "blue",
+    },
 }
 
 
@@ -55,10 +62,17 @@ def test_agents():
         assert name not in found, name
         found.add(name)
         assert data.get("model") in {"haiku", "sonnet"}
+        expected = AGENTS[name]
         tools = {tool.strip() for tool in data["tools"].split(",")}
-        assert tools == AGENTS[name], (name, tools)
+        assert tools == expected["tools"], (name, tools)
+        assert data.get("color") == expected["color"], (name, data.get("color"))
+        assert data["description"].startswith("Use proactively"), (name, data["description"])
         assert "*" not in tools
     assert found == set(AGENTS)
+
+    lyra = (ROOT / "agents" / "lyra.md").read_text(encoding="utf-8")
+    assert "**Do not publish.**" in lyra
+    assert "Never commit, push, open a pull request" in lyra
 
 
 def test_static_files():
@@ -66,7 +80,7 @@ def test_static_files():
     run("bash", "-n", str(ROOT / "context-loader" / "auto-context-load.sh"))
 
     json_paths = [
-        ROOT / ".claude-plugin" / "plugin.json",
+        PLUGIN_PATH,
         ROOT / ".claude-plugin" / "marketplace.json",
         ROOT / "hooks" / "hooks.json",
         ROOT / "context-loader" / "project-keywords.json",
@@ -74,7 +88,7 @@ def test_static_files():
     ]
     parsed = {path: json.loads(path.read_text(encoding="utf-8")) for path in json_paths}
 
-    plugin = parsed[ROOT / ".claude-plugin" / "plugin.json"]
+    plugin = parsed[PLUGIN_PATH]
     marketplace = parsed[ROOT / ".claude-plugin" / "marketplace.json"]
     assert plugin["name"] == "operator-kit"
     assert plugin["version"] == VERSION
@@ -91,12 +105,21 @@ def test_static_files():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     guide = (ROOT / "context-loader" / "install.md").read_text(encoding="utf-8")
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    validate = (ROOT / ".github" / "workflows" / "validate.yml").read_text(
+        encoding="utf-8"
+    )
     assert "cp examples/sample-project-keywords.json" not in readme
     assert "cp rules/post-compact-critical.md.template" not in readme
     assert "Use one specialist by default" in readme
+    assert "Automatic delegation is best-effort" in readme
+    assert "built-in **`/code-review`**" in readme
+    assert "No Operator Kit agent silently commits" in readme
     assert "Do not configure secrets" in readme
     assert "without cloning Operator Kit" in guide
     assert "## [%s]" % VERSION in changelog
+    assert "grep -F \"$version\"" in validate
+    assert VERSION not in validate
+    assert (ROOT / "assets" / "agents" / "operator-roster.webp").is_file()
     assert (ROOT / ".github" / "workflows" / "release.yml").is_file()
 
 
