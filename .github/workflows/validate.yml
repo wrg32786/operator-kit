@@ -33,13 +33,14 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$CLAUDE_CONFIG_DIR"
+          version="$(python -c 'import json; print(json.load(open(".claude-plugin/plugin.json"))["version"])')"
           claude --version
           claude plugin validate .
           claude plugin marketplace add "$GITHUB_WORKSPACE"
           claude plugin install operator-kit@operator-kit --scope user
           claude plugin list --json > "$RUNNER_TEMP/plugins.json"
           grep -F 'operator-kit' "$RUNNER_TEMP/plugins.json"
-          grep -F '2.1.1' "$RUNNER_TEMP/plugins.json"
+          grep -F "$version" "$RUNNER_TEMP/plugins.json"
           claude plugin details operator-kit@operator-kit > "$RUNNER_TEMP/plugin-details.txt"
           grep -F 'Agents (5)' "$RUNNER_TEMP/plugin-details.txt"
           grep -F 'Hooks (1)' "$RUNNER_TEMP/plugin-details.txt"

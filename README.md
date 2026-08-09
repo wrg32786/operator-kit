@@ -42,6 +42,18 @@ mkdir -p ~/.claude/agents/operator-kit
 cp agents/*.md ~/.claude/agents/operator-kit/
 ```
 
+## How routing works
+
+You do not need to memorize the roster. Claude Code matches your request and current context against each agent's `description`, then delegates when a specialist is a good fit. Operator Kit descriptions explicitly say **use proactively** for their clear trigger cases.
+
+Automatic delegation is best-effort, not a hard router:
+
+- **Ask naturally** — Claude usually chooses the matching specialist.
+- **Name the agent** — a strong hint, such as “use Echo to trace the callers.”
+- **Type `@` and select the agent** — guarantees that specialist runs for the task.
+
+Each agent also carries the display color used by its character identity: cyan Echo, blue Newton, red Hypatia, purple Iris, and green Lyra.
+
 ## Use the smallest team that works
 
 **Use one specialist by default. Compose only when the task crosses roles.**
@@ -53,6 +65,8 @@ cp agents/*.md ~/.claude/agents/operator-kit/
 | Repair an unclear bug | **Echo → Lyra** |
 | Evaluate a current tool or approach | **Newton → Hypatia** |
 | Design and build a visual surface | **Iris → Lyra** |
+| Review the current diff | Claude Code's built-in **`/code-review`** |
+| Commit, push, open a PR, or merge | **Main session, only when explicitly requested** |
 
 ## Meet the agents
 
@@ -73,6 +87,17 @@ The boundaries are enforced in frontmatter, not just prose. Echo, Hypatia, and I
 <br>
 <p align="center"><img src="assets/hero.gif" alt="Five Operator Kit agents delegating work inside a terminal" width="760"></p>
 </details>
+
+## Review and publish
+
+Focused analysis and implementation can route to agents. Repository side effects remain with the main Claude Code session:
+
+1. **Implement:** Lyra edits and verifies the working tree.
+2. **Review:** run the built-in `/code-review` when you want a deliberate diff review. It is manual by design so a longer review does not spend time and tokens unexpectedly.
+3. **Publish:** explicitly ask the main session to commit, push, or open a pull request.
+4. **Merge:** explicitly approve the merge, or use GitHub auto-merge after required checks pass.
+
+No Operator Kit agent silently commits, pushes, opens a pull request, enables auto-merge, or merges.
 
 ## Context loader
 

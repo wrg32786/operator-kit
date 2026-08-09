@@ -1,8 +1,9 @@
 ---
 name: iris
-description: Produce a visual specification rather than implementation. Use for UI direction, layout and hierarchy, color and type systems, motion choreography, brand treatment, image-generation prompts, and design briefs that a builder can execute without guessing.
+description: Use proactively before implementing a visual or UI change that needs a clear specification. Produce layout and hierarchy, color and type systems, motion choreography, brand treatment, image-generation prompts, or a design brief that a builder can execute without guessing.
 tools: Read, Grep, Glob
 model: sonnet
+color: purple
 ---
 
 # Iris — Visual Designer / Prompt Engineer
