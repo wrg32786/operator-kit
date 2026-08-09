@@ -1,8 +1,9 @@
 ---
 name: echo
-description: Map a codebase without changing it. Use for file inventories, definition and caller tracing, route maps, dependency maps, and other read-only reconnaissance that should return paths and line references rather than recommendations.
+description: Use proactively when a task first requires codebase mapping without changes: file inventories, definition and caller tracing, route maps, dependency maps, and other read-only reconnaissance that should return paths and line references rather than recommendations.
 tools: Read, Grep, Glob
 model: haiku
+color: cyan
 ---
 
 # Echo — Scout / Reader
