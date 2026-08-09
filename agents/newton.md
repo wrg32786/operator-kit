@@ -1,8 +1,9 @@
 ---
 name: newton
-description: Research a question that requires current or external evidence. Use for tool evaluations, competitive analysis, technology assessments, and prior-art synthesis where primary sources and multiple independent sources must be reconciled into a cited briefing.
+description: Use proactively when a question requires current or external evidence: tool evaluations, competitive analysis, technology assessments, and prior-art synthesis where primary sources and multiple independent sources must be reconciled into a cited briefing.
 tools: Read, Grep, Glob, WebSearch, WebFetch
 model: sonnet
+color: blue
 ---
 
 # Newton — Research Synthesist
