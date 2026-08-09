@@ -15,5 +15,52 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
+          python-version: "3.8"
       - run: python tests/smoke.py
+
+  plugin-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install Claude Code
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Validate, install, inspect, execute, and uninstall
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude-clean
+          DISABLE_AUTOUPDATER: "1"
+        run: |
+          set -euo pipefail
+          mkdir -p "$CLAUDE_CONFIG_DIR"
+          claude --version
+          claude plugin validate .
+          claude plugin marketplace add "$GITHUB_WORKSPACE"
+          claude plugin install operator-kit@operator-kit --scope user
+          claude plugin list --json > "$RUNNER_TEMP/plugins.json"
+          grep -F 'operator-kit' "$RUNNER_TEMP/plugins.json"
+          grep -F '2.1.1' "$RUNNER_TEMP/plugins.json"
+          claude plugin details operator-kit@operator-kit > "$RUNNER_TEMP/plugin-details.txt"
+          grep -F 'Agents (5)' "$RUNNER_TEMP/plugin-details.txt"
+          grep -F 'Hooks (1)' "$RUNNER_TEMP/plugin-details.txt"
+
+          plugin_root="$(find "$CLAUDE_CONFIG_DIR" -type f -path '*/context-loader/auto-context-load.sh' -print -quit | xargs -r dirname | xargs -r dirname)"
+          test -n "$plugin_root"
+          project="$RUNNER_TEMP/context-project"
+          mkdir -p "$project/.claude" "$project/docs"
+          printf '# Auth\n\nInstalled hook works.\n' > "$project/docs/auth.md"
+          cat > "$project/.claude/operator-kit-keywords.json" <<'JSON'
+          {
+            "auth": {
+              "keywords": ["auth flow"],
+              "priority_file": "docs/auth.md",
+              "files": ["docs/auth.md"]
+            }
+          }
+          JSON
+          printf '%s' "{\"hook_event_name\":\"UserPromptSubmit\",\"cwd\":\"$project\",\"prompt\":\"review the auth flow\"}" \
+            | PROJECT_ROOT="$project" bash "$plugin_root/context-loader/auto-context-load.sh" \
+            | grep -F 'Installed hook works.'
+
+          claude plugin uninstall operator-kit@operator-kit --scope user
+          claude plugin marketplace remove operator-kit

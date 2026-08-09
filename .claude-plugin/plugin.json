@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "operator-kit",
   "displayName": "AIgent Operator Kit",
-  "version": "2.1.0",
-  "description": "Five focused Claude Code subagents plus an optional keyword-triggered context loader.",
+  "version": "2.1.1",
+  "description": "Five focused, least-privilege Claude Code subagents plus an optional keyword-triggered context loader.",
   "author": {
     "name": "The AIgent",
     "url": "https://theaigent.xyz"

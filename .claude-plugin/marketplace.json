@@ -8,7 +8,8 @@
     {
       "name": "operator-kit",
       "source": "./",
-      "description": "Five focused subagents and an optional project context loader.",
+      "version": "2.1.1",
+      "description": "Five focused, least-privilege subagents and an optional project context loader.",
       "category": "development",
       "tags": [
         "agents",
