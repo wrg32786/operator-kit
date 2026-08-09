@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/agents/operator-roster.webp" alt="The five AIgent Operator Kit specialists: Echo, Newton, Hypatia, Iris, and Lyra" width="760">
+<img src="assets/agents/ChatGPT Image Aug 9, 2026, 12_09_52 AM.png" alt="The five AIgent Operator Kit specialists: Echo, Newton, Hypatia, Iris, and Lyra" width="760">
 
 # AIgent Operator Kit
 
