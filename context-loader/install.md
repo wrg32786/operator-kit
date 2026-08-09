@@ -16,11 +16,13 @@ It does not dump every configured file into the context window.
 
 The plugin includes the hook. It remains silent until a keywords file exists. Use the plugin or the legacy user-scope installer, not both.
 
-Create a project-local mapping:
+Create a project-local mapping without cloning Operator Kit:
 
 ```bash
 mkdir -p .claude
-cp examples/sample-project-keywords.json .claude/operator-kit-keywords.json
+curl -fsSL \
+  https://raw.githubusercontent.com/wrg32786/operator-kit/main/examples/sample-project-keywords.json \
+  -o .claude/operator-kit-keywords.json
 ```
 
 Then replace the sample paths with paths from the current project:
@@ -75,6 +77,11 @@ Matching is case-insensitive and boundary-aware. A trigger of `auth` matches `au
 - Missing Python, invalid JSON, or no match causes a silent no-op.
 - The loader does not write into the project.
 - Debug logging is off by default. Set `OPERATOR_KIT_DEBUG=1` to write non-prompt diagnostic metadata under `~/.claude/logs/operator-kit/`.
+- The priority excerpt is sent into the active Claude session. Never configure secrets, credentials, private keys, `.env` files, or other content you would not intentionally send to your configured Claude provider.
+
+## Platform support
+
+The hook requires `bash` and Python 3.8+. It is CI-verified on Linux. It is supported on macOS and WSL with those prerequisites. Native Windows requires Git Bash and Python on `PATH`; that path is not yet CI-verified. Without Bash, use the five agents without the context loader.
 
 ## Troubleshooting
 
