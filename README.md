@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/hero.gif" alt="Five Operator Kit agents working in a terminal: Echo maps, Newton researches, Hypatia challenges, Iris specifies, and Lyra builds" width="760">
+<img src="assets/agents/operator-roster.webp" alt="The five AIgent Operator Kit specialists: Echo, Newton, Hypatia, Iris, and Lyra" width="760">
 
 # AIgent Operator Kit
 
@@ -54,17 +54,25 @@ cp agents/*.md ~/.claude/agents/operator-kit/
 | Evaluate a current tool or approach | **Newton → Hypatia** |
 | Design and build a visual surface | **Iris → Lyra** |
 
-## The agents
+## Meet the agents
 
-| Agent | Job | Example task |
-|---|---|---|
-| **Echo** | Read-only codebase scout | “Echo, trace every caller of `createInvoice` and return paths and lines.” |
-| **Newton** | Current, cited research | “Newton, compare Drizzle and Prisma for this schema using primary sources.” |
-| **Hypatia** | Adversarial decision review | “Hypatia, find the strongest reason not to run this migration.” |
-| **Iris** | Visual specification | “Iris, specify the dashboard empty state: hierarchy, type, spacing, and motion.” |
-| **Lyra** | Bounded implementation | “Lyra, implement this accepted spec and run the smallest relevant check.” |
+The roster gives each specialist a distinct visual identity while the actual behavior stays in the plain Markdown agent files.
+
+| Agent | Visual identity | Job | Example task |
+|---|---|---|---|
+| **[Echo](agents/echo.md)** | Cyan scout | Read-only codebase reconnaissance | “Echo, trace every caller of `createInvoice` and return paths and lines.” |
+| **[Newton](agents/newton.md)** | Navy-and-gold researcher | Current, cited research synthesis | “Newton, compare Drizzle and Prisma for this schema using primary sources.” |
+| **[Hypatia](agents/hypatia.md)** | Plum-and-crimson critic | Adversarial decision review | “Hypatia, find the strongest reason not to run this migration.” |
+| **[Iris](agents/iris.md)** | Violet-and-white designer | Visual specification | “Iris, specify the dashboard empty state: hierarchy, type, spacing, and motion.” |
+| **[Lyra](agents/lyra.md)** | Green-and-steel builder | Bounded implementation | “Lyra, implement this accepted spec and run the smallest relevant check.” |
 
 The boundaries are enforced in frontmatter, not just prose. Echo, Hypatia, and Iris receive only read tools. Newton receives read and web-research tools. Lyra alone receives write and shell tools.
+
+<details>
+<summary><strong>See the original terminal handoff animation</strong></summary>
+<br>
+<p align="center"><img src="assets/hero.gif" alt="Five Operator Kit agents delegating work inside a terminal" width="760"></p>
+</details>
 
 ## Context loader
 
@@ -153,6 +161,7 @@ Then remove the `UserPromptSubmit` entry that references `~/.claude/hooks/operat
 operator-kit/
 ├── .claude-plugin/  # plugin manifest + marketplace catalog
 ├── agents/          # echo · hypatia · iris · lyra · newton
+├── assets/agents/   # visual roster for the five specialists
 ├── context-loader/  # hook wrapper, standard-library loader, guide, starter config
 ├── examples/        # filled-out project keywords example
 ├── hooks/           # native plugin hook registration
