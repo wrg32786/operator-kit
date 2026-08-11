@@ -8,6 +8,8 @@
 
 Echo maps, Newton researches, Hypatia challenges, Iris specifies, and Lyra builds. The optional context-loader hook adds a relevant file map and priority excerpt when your prompt mentions a configured project topic.
 
+These agents also run inside [aigent-OS](https://github.com/wrg32786/aigent-os), the full open-source operator system they were built for.
+
 MIT licensed. The five agents are plain Markdown; the optional hook uses Bash and Python 3.8+.
 
 </div>
