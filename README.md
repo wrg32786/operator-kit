@@ -14,6 +14,8 @@ MIT licensed. The five agents are plain Markdown; the optional hook uses Bash an
 
 </div>
 
+> **Current project: [aigent-OS](https://github.com/wrg32786/aigent-os).** Operator Kit is the earlier, smaller kit: five Claude Code specialist agents and an optional context-loader hook. Active development moved to aigent-OS, a Claude Code harness that refreshes its own context instead of compacting. At a threshold it writes a verified capsule, runs /clear, and resumes in a fresh session, with memory as plain markdown in git. Operator Kit still works and stays MIT licensed.
+
 ## Install
 
 ### Recommended: Claude Code plugin
