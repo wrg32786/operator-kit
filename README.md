@@ -210,6 +210,11 @@ CI also installs the actual Claude Code CLI into a clean configuration directory
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release notes.
 
+
+## Get guidance
+
+Want help putting this to work? The AIgent Academy on Skool offers guidance, courses and a community of builders. Membership comes with a guarantee: you have a business in 90 days or your money back. See the [terms](https://theaigent.co/terms). The full walkthrough is in [The AIgent Academy](https://www.skool.com/the-aigent-academy/about?ref=gh-operator-kit).
+
 ## License
 
 MIT. See [LICENSE](LICENSE). The five agents are self-contained; the optional context loader uses only Python’s standard library.
