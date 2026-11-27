@@ -1,0 +1,19 @@
+{
+  "name": "operator-kit",
+  "interface": {
+    "displayName": "AIgent Operator Kit"
+  },
+  "plugins": [
+    {
+      "name": "operator-kit",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

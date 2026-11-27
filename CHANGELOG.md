@@ -2,6 +2,12 @@
 
 All notable changes to AIgent Operator Kit are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Agent Skills packaging for the five specialists, plus a roster skill, so the same briefs load in Claude Code, Cursor, Codex, and other [Agent Skills](https://agentskills.io) clients. Install notes for each agent live in the README.
+
 ## [2.1.2] - 2026-08-08
 
 ### Added

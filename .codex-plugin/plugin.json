@@ -1,0 +1,29 @@
+{
+  "name": "operator-kit",
+  "version": "2.1.2",
+  "description": "Five focused operator specialists: Echo maps, Newton researches, Hypatia challenges, Iris specifies, and Lyra builds.",
+  "author": {
+    "name": "The AIgent",
+    "url": "https://theaigent.xyz"
+  },
+  "homepage": "https://github.com/wrg32786/operator-kit#readme",
+  "repository": "https://github.com/wrg32786/operator-kit",
+  "license": "MIT",
+  "keywords": [
+    "agent-skills",
+    "claude-code",
+    "codex",
+    "cursor",
+    "operator",
+    "subagents"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AIgent Operator Kit",
+    "shortDescription": "Five focused operator specialists",
+    "longDescription": "Load Echo, Newton, Hypatia, Iris, and Lyra as Agent Skills, and use the operator-kit skill to pick the smallest specialist that fits the task.",
+    "developerName": "The AIgent",
+    "category": "Productivity",
+    "websiteURL": "https://github.com/wrg32786/operator-kit"
+  }
+}
