@@ -75,6 +75,44 @@ def test_agents():
     assert "Never commit, push, open a pull request" in lyra
 
 
+def test_skills():
+    import re
+
+    skill_root = ROOT / "skills"
+    expected = {"echo", "hypatia", "iris", "lyra", "newton", "operator-kit"}
+    dirs = sorted(path for path in skill_root.iterdir() if path.is_dir())
+    found = {path.name for path in dirs}
+    assert found == expected, found
+
+    for path in dirs:
+        skill = path / "SKILL.md"
+        assert skill.is_file(), skill
+        body = skill.read_text(encoding="utf-8")
+        assert body.startswith("---\n"), skill
+        end = body.find("\n---", 3)
+        assert end != -1, skill
+        fm = body[3:end]
+        name_match = re.search(r"^name:\s*([a-z0-9]+(?:-[a-z0-9]+)*)\s*$", fm, re.M)
+        assert name_match, "invalid name in %s" % skill
+        assert name_match.group(1) == path.name, (path.name, name_match.group(1))
+        assert re.search(r"^description:\s*", fm, re.M), skill
+        assert re.search(r"^license:\s*MIT\s*$", fm, re.M), skill
+
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "### Install as Agent Skills" in readme
+    assert "npx skills add wrg32786/operator-kit" in readme
+    assert "codex plugin marketplace add wrg32786/operator-kit" in readme
+    assert ".opencode/skills" in readme
+
+    marketplace = json.loads(
+        (ROOT / ".agents" / "plugins" / "marketplace.json").read_text(encoding="utf-8")
+    )
+    assert marketplace["plugins"][0]["name"] == "operator-kit"
+    codex = json.loads((ROOT / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert codex["skills"] == "./skills/"
+    assert codex["license"] == "MIT"
+
+
 def test_static_files():
     run("bash", "-n", str(ROOT / "install.sh"))
     run("bash", "-n", str(ROOT / "context-loader" / "auto-context-load.sh"))
@@ -292,6 +330,7 @@ def test_installer_idempotency_and_migration():
 def main():
     tests = [
         test_agents,
+        test_skills,
         test_static_files,
         test_context_loader,
         test_installer_invalid_settings,

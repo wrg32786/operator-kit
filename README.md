@@ -4,13 +4,13 @@
 
 # AIgent Operator Kit
 
-**Five focused Claude Code specialists. One small install.**
+**Five focused specialists for Claude Code, Cursor, Codex, and other agents. One small install.**
 
-Echo maps, Newton researches, Hypatia challenges, Iris specifies, and Lyra builds. The optional context-loader hook adds a relevant file map and priority excerpt when your prompt mentions a configured project topic.
+Echo maps, Newton researches, Hypatia challenges, Iris specifies, and Lyra builds. Use them as Claude Code subagents, or install the same roster as [Agent Skills](https://agentskills.io) in Cursor, Codex, and other compatible agents. The optional context-loader hook adds a relevant file map and priority excerpt when your prompt mentions a configured project topic.
 
 These agents also run inside [aigent-OS](https://github.com/wrg32786/aigent-os), the full open-source operator system they were built for.
 
-MIT licensed. The five agents are plain Markdown; the optional hook uses Bash and Python 3.8+.
+MIT licensed. The five agents and their matching skills are plain Markdown; the optional hook uses Bash and Python 3.8+.
 
 </div>
 
@@ -45,6 +45,46 @@ Manual agents-only install from a local clone:
 mkdir -p ~/.claude/agents/operator-kit
 cp agents/*.md ~/.claude/agents/operator-kit/
 ```
+
+### Install as Agent Skills
+
+The same specialists also ship as [Agent Skills](https://agentskills.io) under `skills/`. This is the path for Cursor, Codex, and other compatible agents, and it works in Claude Code too. Use the plugin or the skill install, or both; they share the same briefs.
+
+**Claude Code and Cursor** (via the skills CLI):
+
+```bash
+# Claude Code, current project
+npx skills add wrg32786/operator-kit --yes
+
+# Cursor, current workspace
+npx skills add wrg32786/operator-kit --yes
+```
+
+If your Cursor build has agent skills turned on, you can also clone or copy the `skills/` folders into `.cursor/skills/`.
+
+**Codex:**
+
+```bash
+codex plugin marketplace add wrg32786/operator-kit --ref main \
+  --sparse .agents/plugins \
+  --sparse .codex-plugin \
+  --sparse skills \
+  --sparse agents
+```
+
+Then install the `operator-kit` plugin from that marketplace. In the Codex UI, add `https://github.com/wrg32786/operator-kit` as a plugin marketplace (git ref `main`).
+
+**OpenCode:** copy the skill folders you need into a discoverable path (project-local `.opencode/skills/` is a good default; OpenCode also discovers `.claude/skills/` and `.agents/skills/`):
+
+```bash
+mkdir -p .opencode/skills
+cp -R skills/echo .opencode/skills/echo
+# repeat for newton, hypatia, iris, lyra, and optionally operator-kit
+```
+
+Each skill `name` is lowercase kebab-case and matches its folder, which OpenCode requires.
+
+After install, ask naturally (`use Echo to find every Stripe caller`) or name the skill. The [operator-kit](skills/operator-kit/SKILL.md) skill is the roster: it picks the smallest specialist that fits.
 
 ## How routing works
 
@@ -188,13 +228,16 @@ Then remove the `UserPromptSubmit` entry that references `~/.claude/hooks/operat
 
 ```text
 operator-kit/
-├── .claude-plugin/  # plugin manifest + marketplace catalog
-├── agents/          # echo · hypatia · iris · lyra · newton
+├── .agents/plugins/ # Codex marketplace catalog
+├── .claude-plugin/  # Claude Code plugin manifest + marketplace catalog
+├── .codex-plugin/   # Codex plugin manifest (skills path)
+├── agents/          # echo · hypatia · iris · lyra · newton (Claude Code subagents)
 ├── assets/agents/   # visual roster for the five specialists
 ├── context-loader/  # hook wrapper, standard-library loader, guide, starter config
 ├── examples/        # filled-out project keywords example
 ├── hooks/           # native plugin hook registration
 ├── rules/           # critical project-rules template
+├── skills/          # Agent Skills packaging of the same specialists
 ├── tests/           # dependency-free regression check
 └── install.sh       # legacy user-scope installer
 ```
@@ -217,7 +260,7 @@ Want help putting this to work? The AIgent Academy on Skool offers guidance, cou
 
 ## License
 
-MIT. See [LICENSE](LICENSE). The five agents are self-contained; the optional context loader uses only Python’s standard library.
+MIT. See [LICENSE](LICENSE). The five agents and their Agent Skills are self-contained; the optional context loader uses only Python’s standard library.
 
 ---
 
